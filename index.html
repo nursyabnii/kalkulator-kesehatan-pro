@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisis Berat Badan - Icon Version</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            overflow-x: hidden;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .gender-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen font-sans antialiased text-gray-800">
+
+    <div class="flex justify-center items-start sm:py-10">
+        <div class="bg-white w-full sm:max-w-md sm:rounded-3xl shadow-2xl overflow-hidden min-h-screen sm:min-h-0">
+
+            <div class="p-6 bg-white border-b border-gray-100">
+                <h1 class="text-xl font-bold text-center mb-6 text-gray-700">Kalkulator Kesehatan Pro</h1>
+                <div class="grid grid-cols-2 gap-4 mb-8 text-center">
+                    <div class="bg-gray-50 p-3 rounded-2xl">
+                        <label
+                            class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Usia</label>
+                        <input type="number" id="age" value="0"
+                            class="bg-transparent w-full text-xl font-black text-center focus:outline-none">
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-2xl">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Tinggi
+                            (cm)</label>
+                        <input type="number" id="height" value="0"
+                            class="bg-transparent w-full text-xl font-black text-center focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mb-8">
+                    <div class="flex bg-gray-100 p-1.5 rounded-2xl space-x-2">
+                        <button onclick="setGender('female')" id="btnFemale"
+                            class="gender-btn active w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300">
+                            <i data-lucide="venus" class="w-6 h-6"></i>
+                        </button>
+                        <button onclick="setGender('male')" id="btnMale"
+                            class="gender-btn w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 text-gray-400">
+                            <i data-lucide="mars" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+
+                    <div class="bg-gray-50 p-3 rounded-2xl text-right min-w-[140px]">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Berat
+                            (kg)</label>
+                        <input type="number" id="weight" value="0"
+                            class="bg-transparent w-full text-xl font-black text-right focus:outline-none">
+                    </div>
+                </div>
+
+                <button onclick="updateAnalysis()"
+                    class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-100">
+                    LIHAT HASIL ANALISIS
+                </button>
+            </div>
+
+            <div id="resultCard" class="p-6">
+                <div class="gauge-container text-center">
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-tighter mb-2" id="topStatus">Normal</p>
+                    <canvas id="bmiChart"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-end pb-4">
+                        <span class="text-gray-400 text-[10px] font-black uppercase">IMT</span>
+                        <span id="imtValue" class="text-5xl font-black tracking-tighter">29.1</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end mt-10 border-b border-gray-50 pb-5">
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Kategori</p>
+                        <p id="katLabel" class="font-black text-xl leading-tight">Kelebihan Bobot</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Selisih Berat</p>
+                        <p id="selisihLabel" class="font-black text-xl leading-tight">+11.9 kg</p>
+                    </div>
+                </div>
+
+                <div id="categoryTable" class="mt-6 space-y-1"></div>
+
+                <div class="mt-8 p-4 bg-gray-50 rounded-2xl flex justify-between items-center">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Target Ideal</span>
+                        <span id="rangeNormal" class="font-black text-gray-700">63.0 kg</span>
+                    </div>
+                    <span id="genderLabel"
+                        class="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">Wanita</span>
+                </div>
+
+                <div class="mt-8 text-center border-t border-gray-50 pt-4">
+                    <p class="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em]">
+                        &copy; 2026 Kalkulator Kesehatan Pro. All Rights Reserved.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let bmiChart;
+        let currentGender = 'female';
+
+        const categoryData = {
+            female: [
+                { label: "Bobot Terlalu Rendah", min: 0, max: 15.9, text: "< 15.9" },
+                { label: "Sangat Kurang Bobot", min: 16.0, max: 16.9, text: "16.0 - 16.9" },
+                { label: "Kurang Bobot", min: 17.0, max: 18.4, text: "17.0 - 18.4" },
+                { label: "Normal", min: 18.5, max: 23.9, text: "18.5 - 23.9" },
+                { label: "Kelebihan Bobot", min: 24.0, max: 28.9, text: "24.0 - 28.9" },
+                { label: "Obesitas Kelas I", min: 29.0, max: 34.9, text: "29.0 - 34.9" },
+                { label: "Obesitas Kelas II", min: 35.0, max: 39.9, text: "35.0 - 39.9" },
+                { label: "Obesitas Kelas III", min: 40.0, max: 100, text: "≥ 40.0" }
+            ],
+            male: [
+                { label: "Bobot Terlalu Rendah", min: 0, max: 15.9, text: "< 15.9" },
+                { label: "Sangat Kurang Bobot", min: 16.0, max: 16.9, text: "16.0 - 16.9" },
+                { label: "Kurang Bobot", min: 17.0, max: 19.9, text: "17.0 - 19.9" },
+                { label: "Normal", min: 20.0, max: 24.9, text: "20.0 - 24.9" },
+                { label: "Kelebihan Bobot", min: 25.0, max: 29.9, text: "25.0 - 29.9" },
+                { label: "Obesitas Kelas I", min: 30.0, max: 34.9, text: "30.0 - 34.9" },
+                { label: "Obesitas Kelas II", min: 35.0, max: 39.9, text: "35.0 - 39.9" },
+                { label: "Obesitas Kelas III", min: 40.0, max: 100, text: "≥ 40.0" }
+            ]
+        };
+
+        const needlePlugin = {
+            id: 'needle',
+            afterDraw: (chart) => {
+                const { ctx, chartArea: { width } } = chart;
+                ctx.save();
+                const val = chart.config.options.needleValue;
+                let angle = Math.PI + (Math.PI * (Math.min(Math.max(val, 15), 40) - 15) / 25);
+                const cx = width / 2;
+                const cy = chart._metasets[0].data[0].y;
+                const needleLength = chart._metasets[0].data[0].outerRadius - 25;
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.moveTo(0, -2); ctx.lineTo(needleLength, 0); ctx.lineTo(0, 2);
+                ctx.fillStyle = '#1f2937'; ctx.fill();
+                ctx.rotate(-angle); ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#1f2937'; ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.restore();
+            }
+        };
+
+        function setGender(g) {
+            currentGender = g;
+            document.getElementById('btnFemale').classList.toggle('active', g === 'female');
+            document.getElementById('btnMale').classList.toggle('active', g === 'male');
+            document.getElementById('genderLabel').innerText = g === 'female' ? 'Wanita' : 'Pria';
+            updateAnalysis();
+        }
+
+        function updateAnalysis() {
+            const h = parseFloat(document.getElementById('height').value);
+            const w = parseFloat(document.getElementById('weight').value);
+            const hM = h / 100;
+            const imt = (w / (hM * hM)).toFixed(1);
+
+            const cats = categoryData[currentGender];
+            let currentCat = cats[0];
+            for (let c of cats) { if (imt >= c.min) currentCat = c; }
+
+            const factor = currentGender === 'male' ? 0.1 : 0.15;
+            const ideal = ((h - 100) - ((h - 100) * factor)).toFixed(1);
+
+            document.getElementById('imtValue').innerText = imt;
+            document.getElementById('katLabel').innerText = currentCat.label;
+            document.getElementById('topStatus').innerText = currentCat.label;
+
+            const diff = (w - ideal).toFixed(1);
+            document.getElementById('selisihLabel').innerText = diff > 0 ? `+${diff} kg` : `${diff} kg`;
+
+            const color = imt > 25 ? 'text-red-500' : (imt < 18.5 ? 'text-blue-500' : 'text-green-500');
+            document.getElementById('imtValue').className = `text-5xl font-black tracking-tighter ${color}`;
+            document.getElementById('katLabel').className = `font-black text-xl leading-tight ${color}`;
+            document.getElementById('selisihLabel').className = `font-black text-xl leading-tight ${color}`;
+
+            const table = document.getElementById('categoryTable');
+            table.innerHTML = '';
+            cats.forEach(cat => {
+                const isActive = currentCat.label === cat.label;
+                const row = document.createElement('div');
+                row.className = `flex justify-between text-xs py-1.5 px-2 rounded-lg transition-all ${isActive ? 'bg-gray-50 text-red-500 font-bold italic' : 'text-gray-400'}`;
+                row.innerHTML = `<span>${isActive ? '▶ ' : ''}${cat.label}</span><span>${cat.text}</span>`;
+                table.appendChild(row);
+            });
+
+            document.getElementById('rangeNormal').innerText = `${ideal} kg`;
+            initChart(imt);
+        }
+
+        function initChart(value) {
+            const ctx = document.getElementById('bmiChart').getContext('2d');
+            if (bmiChart) bmiChart.destroy();
+            bmiChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [5, 5, 5, 5, 5],
+                        backgroundColor: ['#93C5FD', '#60A5FA', '#34D399', '#FBBF24', '#EF4444'],
+                        borderWidth: 0, circumference: 180, rotation: 270, cutout: '88%',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    needleValue: value,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                },
+                plugins: [needlePlugin]
+            });
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+
+            // Ambil elemen input
+            const inputs = ['age', 'height', 'weight'];
+
+            // Tambahkan event listener agar setiap perubahan langsung memicu update
+            inputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', updateAnalysis);
+            });
+
+            // Jalankan analisis pertama kali
+            updateAnalysis();
+        };
+    </script>
+</body>
+
+</html>
